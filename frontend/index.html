@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Investment Strategy Predictor</title>
+  <style>
+    :root {
+      --bg-light: #f4f4f4;
+      --bg-dark: #121212;
+      --text-light: #000;
+      --text-dark: #f5f5f5;
+      --primary: #4caf50;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--bg-light);
+      color: var(--text-light);
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    body.dark-mode {
+      background-color: var(--bg-dark);
+      color: var(--text-dark);
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 2rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    }
+
+    label {
+      display: block;
+      margin-top: 1rem;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.25rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      margin-top: 1.5rem;
+      padding: 0.75rem;
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .result, .error {
+      margin-top: 1rem;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .toggle-btn {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+    }
+
+    #loading {
+      text-align: center;
+      margin-top: 1rem;
+    }
+
+    #summary, #chart-container, #downloadBtn {
+      margin-top: 1.5rem;
+      text-align: center;
+    }
+
+    #chart-container canvas {
+      max-width: 100%;
+    }
+  </style>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- jsPDF + html2canvas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <button class="toggle-btn" onclick="toggleTheme()">🌓</button>
+
+  <div class="container" id="capture">
+    <h2 style="text-align:center;">Investment Strategy Predictor</h2>
+    <form id="predict-form">
+      <label>Age: <input type="number" name="age" required></label>
+      <label>Income: <input type="number" name="income" required></label>
+      <label>Risk Tolerance:
+        <select name="risk_tolerance" required>
+          <option value="Low">Low</option>
+          <option value="Moderate">Moderate</option>
+          <option value="High">High</option>
+        </select>
+      </label>
+      <label>Investment Goal:
+        <select name="investment_goal" required>
+          <option value="retirement">Retirement</option>
+          <option value="education">Education</option>
+          <option value="wealth_growth">Wealth Growth</option>
+        </select>
+      </label>
+      <label>Investment Experience:
+        <select name="investment_experience" required>
+          <option value="none">None</option>
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="expert">Expert</option>
+        </select>
+      </label>
+      <label>Investment Duration (years): <input type="number" name="investment_duration" required></label>
+      <label>Debt Level: <input type="number" name="debt_level" required></label>
+      <label>Savings: <input type="number" name="savings" required></label>
+      <label>Dependents: <input type="number" name="dependents" required></label>
+      <label>Employment Status:
+        <select name="employment_status" required>
+          <option value="unemployed">Unemployed</option>
+          <option value="part_time">Part-time</option>
+          <option value="full_time">Full-time</option>
+          <option value="self_employed">Self-employed</option>
+        </select>
+      </label>
+      <button type="submit">Predict Strategy</button>
+    </form>
+
+    <div id="loading" style="display:none;">
+      <svg width="40" height="40" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg" stroke="var(--primary)">
+        <g fill="none" fill-rule="evenodd" stroke-width="4">
+          <circle cx="22" cy="22" r="1">
+            <animate attributeName="r" begin="0s" dur="1.8s" values="1; 20"
+              calcMode="spline" keySplines="0.165, 0.84, 0.44, 1"
+              keyTimes="0; 1" repeatCount="indefinite"/>
+            <animate attributeName="stroke-opacity" begin="0s" dur="1.8s"
+              values="1; 0" calcMode="spline"
+              keySplines="0.3, 0.61, 0.355, 1" keyTimes="0; 1"
+              repeatCount="indefinite"/>
+          </circle>
+          <circle cx="22" cy="22" r="1">
+            <animate attributeName="r" begin="-0.9s" dur="1.8s"
+              values="1; 20" calcMode="spline"
+              keySplines="0.165, 0.84, 0.44, 1" keyTimes="0; 1"
+              repeatCount="indefinite"/>
+            <animate attributeName="stroke-opacity"
+              begin="-0.9s" dur="1.8s" values="1; 0"
+              calcMode="spline" keySplines="0.3, 0.61, 0.355, 1"
+              keyTimes="0; 1" repeatCount="indefinite"/>
+          </circle>
+        </g>
+      </svg>
+    </div>
+
+    <div class="result" id="result"></div>
+    <div class="error" id="error"></div>
+    <div id="summary"></div>
+
+    <div id="chart-container" style="display:none;">
+      <canvas id="strategyChart"></canvas>
+    </div>
+
+    <div id="downloadBtn" style="display:none;">
+      <button onclick="downloadPDF()">📄 Download PDF</button>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("predict-form");
+    const resultDiv = document.getElementById("result");
+    const errorDiv = document.getElementById("error");
+    const summaryDiv = document.getElementById("summary");
+    const chartContainer = document.getElementById("chart-container");
+    let chart; // For Chart.js instance
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      resultDiv.textContent = "";
+      errorDiv.textContent = "";
+      summaryDiv.textContent = "";
+      chartContainer.style.display = "none";
+      document.getElementById("downloadBtn").style.display = "none";
+      document.getElementById("loading").style.display = "block";
+
+      const data = {
+        age: +form.age.value,
+        income: +form.income.value,
+        risk_tolerance: form.risk_tolerance.value,
+        investment_goal: form.investment_goal.value,
+        investment_experience: form.investment_experience.value,
+        investment_duration: +form.investment_duration.value,
+        debt_level: +form.debt_level.value,
+        savings: +form.savings.value,
+        dependents: +form.dependents.value,
+        employment_status: form.employment_status.value,
+      };
+
+      try {
+        const res = await fetch("http://localhost:8000/predict", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(data)
+        });
+
+        const json = await res.json();
+        if (res.ok) {
+          const strategies = ["Conservative", "Balanced", "Aggressive"];
+          const label = strategies[json.prediction] || "Unknown";
+
+          resultDiv.textContent = `📊 Recommended Strategy: ${label}`;
+
+          const summaryMap = {
+            "Conservative": "Low-risk strategy focusing on bonds, fixed deposits, and large-cap stocks.",
+            "Balanced": "Moderate-risk mix of equities, debt instruments, and index funds.",
+            "Aggressive": "High-risk high-return portfolio with equities, crypto, and growth stocks."
+          };
+          summaryDiv.innerHTML = `📋 <strong>Summary:</strong> ${summaryMap[label]}`;
+
+          showChart(label);
+          document.getElementById("downloadBtn").style.display = "block";
+        } else {
+          throw new Error(json.detail || "Something went wrong.");
+        }
+      } catch (err) {
+        errorDiv.textContent = `❌ ${err.message}`;
+      } finally {
+        document.getElementById("loading").style.display = "none";
+      }
+    });
+
+    function showChart(label) {
+      const dataMap = {
+        "Conservative": [60, 30, 10],
+        "Balanced": [40, 40, 20],
+        "Aggressive": [20, 30, 50]
+      };
+
+      const colors = ["#4caf50", "#2196f3", "#f44336"];
+      const labels = ["Bonds/FDs", "Equities", "Growth Assets"];
+
+      if (chart) chart.destroy(); // reset old chart
+      chart = new Chart(document.getElementById("strategyChart"), {
+        type: "pie",
+        data: {
+          labels: labels,
+          datasets: [{
+            data: dataMap[label],
+            backgroundColor: colors
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+      chartContainer.style.display = "block";
+    }
+
+    async function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const canvas = await html2canvas(document.getElementById("capture"));
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF();
+      pdf.addImage(imgData, "PNG", 10, 10, 190, 0);
+      pdf.save("strategy_report.pdf");
+    }
+
+    function toggleTheme() {
+      const dark = document.body.classList.toggle("dark-mode");
+      localStorage.setItem("theme", dark ? "dark" : "light");
+    }
+
+    (function () {
+      if (localStorage.getItem("theme") === "dark") {
+        document.body.classList.add("dark-mode");
+      }
+    })();
+  </script>
+</body>
+</html>
